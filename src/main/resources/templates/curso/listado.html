@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:th="http://www.thymeleaf.org">
+
+    <head th:replace="~{general/fragmentos :: head}">
+        <title>Cursos</title>
+    </head>
+
+    <body>
+
+        <header th:replace="~{general/fragmentos :: header}"></header>
+
+        <main class="container my-4">
+
+            <!-- Alertas flash -->
+            <div th:if="${todoOk}" class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
+                <i class="fa-solid fa-circle-check"></i> <strong>Éxito:</strong> [[${todoOk}]]
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            <div th:if="${error}" class="alert alert-danger alert-dismissible fade show shadow-sm" role="alert">
+                <i class="fa-solid fa-triangle-exclamation"></i> <strong>Error:</strong> [[${error}]]
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+
+            <!-- Encabezado de sección -->
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h3 class="mb-0">
+                    <i class="fa-solid fa-book-open text-primary"></i> Gestión de Cursos
+                    <span class="badge bg-secondary ms-2" th:text="${totalCursos}">0</span>
+                </h3>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#cursoModal"
+                        onclick="prepararNuevo()">
+                    <i class="fa-solid fa-plus"></i> Nuevo Curso
+                </button>
+            </div>
+
+            <!-- Tabla de cursos -->
+            <div class="card shadow-sm">
+                <div class="card-body p-0">
+                    <table class="table table-striped table-hover align-middle mb-0">
+                        <thead class="table-dark">
+                            <tr>
+                                <th class="ps-3">#</th>
+                                <th>Nombre</th>
+                                <th>Descripción</th>
+                                <th class="text-center">Créditos</th>
+                                <th class="text-center">Estado</th>
+                                <th class="text-center">Imagen</th>
+                                <th class="text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:if="${cursos == null or cursos.empty}">
+                                <td colspan="7" class="text-center text-muted py-4">
+                                    <i class="fa-solid fa-inbox fa-2x d-block mb-2"></i>
+                                    No hay cursos registrados.
+                                </td>
+                            </tr>
+                            <tr th:each="c : ${cursos}">
+                                <td class="ps-3 fw-bold text-muted">[[${c.idCurso}]]</td>
+                                <td class="fw-semibold">[[${c.nombre}]]</td>
+                                <td class="text-muted small" style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"
+                                    th:title="${c.descripcion}">
+                                    [[${c.descripcion != null ? c.descripcion : '—'}]]
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-primary rounded-pill">[[${c.creditos}]]</span>
+                                </td>
+                                <td class="text-center">
+                                    <span th:classappend="${c.estado} ? 'bg-success' : 'bg-danger'"
+                                          class="badge"
+                                          th:text="${c.estado} ? 'Activo' : 'Inactivo'">
+                                    </span>
+                                </td>
+                                <td class="text-center">
+                                    <img th:if="${c.imagen != null and !#strings.isEmpty(c.imagen)}"
+                                         th:src="@{${c.imagen}}" alt="imagen"
+                                         height="50" class="rounded shadow-sm object-fit-cover"/>
+                                    <span th:if="${c.imagen == null or #strings.isEmpty(c.imagen)}"
+                                          class="text-muted small">
+                                        <i class="fa-regular fa-image"></i> Sin imagen
+                                    </span>
+                                </td>
+                                <td class="text-center">
+                                    <!-- Botón Editar — datos en atributos data-* para evitar problemas con caracteres especiales -->
+                                    <button class="btn btn-warning btn-sm me-1"
+                                            data-bs-toggle="modal" data-bs-target="#cursoModal"
+                                            th:attr="data-id=${c.idCurso},
+                                                     data-nombre=${c.nombre},
+                                                     data-descripcion=${c.descripcion},
+                                                     data-creditos=${c.creditos},
+                                                     data-estado=${c.estado},
+                                                     data-imagen=${c.imagen}"
+                                            onclick="prepararEditar(this)">
+                                        <i class="fa-solid fa-pencil"></i> Editar
+                                    </button>
+                                    <!-- Botón Eliminar -->
+                                    <button class="btn btn-danger btn-sm"
+                                            th:attr="data-id=${c.idCurso}, data-nombre=${c.nombre}"
+                                            onclick="confirmarEliminar(this)">
+                                        <i class="fa-solid fa-trash"></i> Eliminar
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- ===================== MODAL CREAR / EDITAR ===================== -->
+        <div class="modal fade" id="cursoModal" tabindex="-1"
+             aria-labelledby="cursoModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <form id="formCurso" th:action="@{/curso/guardar}" method="post"
+                          enctype="multipart/form-data" novalidate class="needs-validation">
+
+                        <!-- ID oculto (vacío = nuevo, con valor = editar) -->
+                        <input type="hidden" id="idCurso" name="idCurso"/>
+                        <!-- Estado oculto — se sincroniza con el switch -->
+                        <input type="hidden" id="estadoHidden" name="estado" value="false"/>
+
+                        <div class="modal-header bg-primary text-white">
+                            <h5 class="modal-title" id="cursoModalLabel">
+                                <i class="fa-solid fa-book-open"></i>
+                                <span id="modalTitulo">Nuevo Curso</span>
+                            </h5>
+                            <button type="button" class="btn-close btn-close-white"
+                                    data-bs-dismiss="modal"></button>
+                        </div>
+
+                        <div class="modal-body">
+                            <div class="row g-3">
+
+                                <!-- Nombre -->
+                                <div class="col-12">
+                                    <label class="form-label fw-semibold">
+                                        Nombre <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="text" id="nombre" name="nombre"
+                                           class="form-control" maxlength="120" required/>
+                                    <div class="invalid-feedback">El nombre es obligatorio.</div>
+                                </div>
+
+                                <!-- Descripción -->
+                                <div class="col-12">
+                                    <label class="form-label fw-semibold">Descripción</label>
+                                    <textarea id="descripcion" name="descripcion"
+                                              class="form-control" rows="3" maxlength="1000"></textarea>
+                                </div>
+
+                                <!-- Créditos + Estado -->
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold">
+                                        Créditos <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="number" id="creditos" name="creditos"
+                                           class="form-control" min="0" max="30" required/>
+                                    <div class="invalid-feedback">Ingrese un valor entre 0 y 30.</div>
+                                </div>
+                                <div class="col-md-6 d-flex align-items-end">
+                                    <div class="form-check form-switch mb-2">
+                                        <input class="form-check-input" type="checkbox"
+                                               id="estadoSwitch" role="switch"
+                                               onchange="document.getElementById('estadoHidden').value = this.checked"/>
+                                        <label class="form-check-label fw-semibold" for="estadoSwitch">
+                                            Curso activo
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <!-- Imagen -->
+                                <div class="col-12">
+                                    <label class="form-label fw-semibold">Imagen del curso</label>
+                                    <input type="file" id="imagenFile" name="imagenFile"
+                                           class="form-control" accept="image/*"
+                                           onchange="previewImagen(this)"/>
+                                    <div class="text-center mt-2">
+                                        <img id="imagenPreview" src="#" alt="Vista previa"
+                                             height="130" class="rounded border d-none shadow-sm"/>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                <i class="fa-solid fa-xmark"></i> Cancelar
+                            </button>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fa-solid fa-floppy-disk"></i> Guardar
+                            </button>
+                        </div>
+
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Formulario oculto para eliminar -->
+        <form id="formEliminar" th:action="@{/curso/eliminar}" method="post" class="d-none">
+            <input type="hidden" id="idCursoEliminar" name="idCurso"/>
+        </form>
+
+        <footer th:replace="~{general/fragmentos :: footer}"></footer>
+
+        <!-- ===================== SCRIPTS ===================== -->
+        <script>
+
+            // --- Preparar modal para NUEVO curso ---
+            function prepararNuevo() {
+                document.getElementById('modalTitulo').textContent = 'Nuevo Curso';
+                document.getElementById('idCurso').value = '';
+                document.getElementById('nombre').value = '';
+                document.getElementById('descripcion').value = '';
+                document.getElementById('creditos').value = '';
+                document.getElementById('estadoSwitch').checked = true;
+                document.getElementById('estadoHidden').value = 'true';
+                document.getElementById('imagenPreview').classList.add('d-none');
+                document.getElementById('imagenFile').value = '';
+                document.getElementById('formCurso').classList.remove('was-validated');
+            }
+
+            // --- Preparar modal para EDITAR curso (lee data-* del botón) ---
+            function prepararEditar(btn) {
+                document.getElementById('modalTitulo').textContent = 'Editar Curso';
+                document.getElementById('idCurso').value        = btn.dataset.id      || '';
+                document.getElementById('nombre').value         = btn.dataset.nombre  || '';
+                document.getElementById('descripcion').value    = btn.dataset.descripcion !== 'null' ? btn.dataset.descripcion : '';
+                document.getElementById('creditos').value       = btn.dataset.creditos || '';
+
+                const activo = btn.dataset.estado === 'true';
+                document.getElementById('estadoSwitch').checked   = activo;
+                document.getElementById('estadoHidden').value     = activo;
+
+                const preview = document.getElementById('imagenPreview');
+                const img     = btn.dataset.imagen;
+                if (img && img !== 'null' && img.trim() !== '') {
+                    preview.src = img;
+                    preview.classList.remove('d-none');
+                } else {
+                    preview.classList.add('d-none');
+                }
+
+                document.getElementById('imagenFile').value = '';
+                document.getElementById('formCurso').classList.remove('was-validated');
+            }
+
+            // --- Vista previa de imagen seleccionada ---
+            function previewImagen(input) {
+                const preview = document.getElementById('imagenPreview');
+                if (input.files && input.files[0]) {
+                    const reader = new FileReader();
+                    reader.onload = e => {
+                        preview.src = e.target.result;
+                        preview.classList.remove('d-none');
+                    };
+                    reader.readAsDataURL(input.files[0]);
+                }
+            }
+
+            // --- Confirmar eliminación con SweetAlert2 ---
+            function confirmarEliminar(btn) {
+                const id     = btn.dataset.id;
+                const nombre = btn.dataset.nombre;
+                Swal.fire({
+                    title: '¿Eliminar curso?',
+                    html:  `¿Está seguro que desea eliminar el curso <b>${nombre}</b>?<br>
+                            <small class="text-danger">Esta acción no se puede deshacer.</small>`,
+                    icon:  'warning',
+                    showCancelButton:    true,
+                    confirmButtonColor:  '#dc3545',
+                    cancelButtonColor:   '#6c757d',
+                    confirmButtonText:   '<i class="fa-solid fa-trash"></i> Sí, eliminar',
+                    cancelButtonText:    '<i class="fa-solid fa-xmark"></i> Cancelar',
+                    reverseButtons:      true
+                }).then(result => {
+                    if (result.isConfirmed) {
+                        document.getElementById('idCursoEliminar').value = id;
+                        document.getElementById('formEliminar').submit();
+                    }
+                });
+            }
+
+            // --- Validación Bootstrap al enviar ---
+            document.addEventListener('DOMContentLoaded', () => {
+                const form = document.getElementById('formCurso');
+                form.addEventListener('submit', e => {
+                    if (!form.checkValidity()) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                    }
+                    form.classList.add('was-validated');
+                });
+
+                // Auto-cerrar alertas flash después de 4 segundos
+                setTimeout(() => {
+                    document.querySelectorAll('.alert').forEach(el => {
+                        bootstrap.Alert.getOrCreateInstance(el).close();
+                    });
+                }, 4000);
+            });
+
+        </script>
+
+    </body>
+</html>
