@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:th="http://www.thymeleaf.org">
+
+<head th:replace="~{general/fragmentos :: head}">
+    <title>Estudiantes</title>
+</head>
+
+<body>
+
+<header th:replace="~{general/fragmentos :: header}"></header>
+
+<main class="container my-4">
+
+    <!-- Alertas flash -->
+    <div th:if="${todoOk}" class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
+        <i class="fa-solid fa-circle-check"></i> <strong>Éxito:</strong> [[${todoOk}]]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    <div th:if="${error}" class="alert alert-danger alert-dismissible fade show shadow-sm" role="alert">
+        <i class="fa-solid fa-triangle-exclamation"></i> <strong>Error:</strong> [[${error}]]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <!-- Encabezado + Filtro -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <h3 class="mb-0">
+            <i class="fa-solid fa-user-graduate text-primary"></i> Gestión de Estudiantes
+            <span class="badge bg-secondary ms-2" th:text="${totalEstudiantes}">0</span>
+        </h3>
+
+        <div class="d-flex gap-2 align-items-center">
+            <!-- Filtro por curso -->
+            <form th:action="@{/estudiante/listado}" method="get" class="d-flex gap-2 align-items-center">
+                <select class="form-select form-select-sm" name="idCurso" onchange="this.form.submit()">
+                    <option value="" th:selected="${idCursoSeleccionado == null}">Todos los cursos</option>
+                    <option th:each="c : ${cursos}"
+                            th:value="${c.idCurso}"
+                            th:text="${c.nombre}"
+                            th:selected="${idCursoSeleccionado != null and idCursoSeleccionado == c.idCurso}">
+                    </option>
+                </select>
+                <noscript>
+                    <button class="btn btn-sm btn-outline-primary" type="submit">Filtrar</button>
+                </noscript>
+            </form>
+
+            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#estudianteModal"
+                    onclick="prepararNuevoEstudiante()">
+                <i class="fa-solid fa-plus"></i> Nuevo Estudiante
+            </button>
+        </div>
+    </div>
+
+    <!-- Tabla -->
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <table class="table table-striped table-hover align-middle mb-0">
+                <thead class="table-dark">
+                <tr>
+                    <th class="ps-3">#</th>
+                    <th>Nombre</th>
+                    <th>Correo</th>
+                    <th class="text-center">Edad</th>
+                    <th>Curso</th>
+                    <th class="text-center">Acciones</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:if="${estudiantes == null or estudiantes.empty}">
+                    <td colspan="6" class="text-center text-muted py-4">
+                        <i class="fa-solid fa-inbox fa-2x d-block mb-2"></i>
+                        No hay estudiantes registrados.
+                    </td>
+                </tr>
+
+                <tr th:each="e : ${estudiantes}">
+                    <td class="ps-3 fw-bold text-muted">[[${e.idEstudiante}]]</td>
+                    <td class="fw-semibold">[[${e.nombre}]]</td>
+                    <td class="text-muted">[[${e.correo}]]</td>
+                    <td class="text-center">
+                        <span class="badge bg-primary rounded-pill">[[${e.edad}]]</span>
+                    </td>
+                    <td>[[${e.curso != null ? e.curso.nombre : '—'}]]</td>
+                    <td class="text-center">
+
+                        <button class="btn btn-warning btn-sm me-1"
+                                data-bs-toggle="modal" data-bs-target="#estudianteModal"
+                                th:attr="data-id=${e.idEstudiante},
+                                         data-nombre=${e.nombre},
+                                         data-correo=${e.correo},
+                                         data-edad=${e.edad},
+                                         data-cursoid=${e.curso != null ? e.curso.idCurso : ''}"
+                                onclick="prepararEditarEstudiante(this)">
+                            <i class="fa-solid fa-pencil"></i> Editar
+                        </button>
+
+                        <button class="btn btn-danger btn-sm"
+                                th:attr="data-id=${e.idEstudiante}, data-nombre=${e.nombre}"
+                                onclick="confirmarEliminarEstudiante(this)">
+                            <i class="fa-solid fa-trash"></i> Eliminar
+                        </button>
+
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</main>
+
+<!-- MODAL Crear/Editar -->
+<div class="modal fade" id="estudianteModal" tabindex="-1"
+     aria-labelledby="estudianteModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form id="formEstudiante" th:action="@{/estudiante/guardar}" method="post"
+                  novalidate class="needs-validation">
+
+                <input type="hidden" id="idEstudiante" name="idEstudiante"/>
+
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="estudianteModalLabel">
+                        <i class="fa-solid fa-user-graduate"></i>
+                        <span id="modalTituloEst">Nuevo Estudiante</span>
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white"
+                            data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+                    <div class="row g-3">
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">
+                                Nombre <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" id="nombre" name="nombre" class="form-control"
+                                   maxlength="120" required/>
+                            <div class="invalid-feedback">El nombre es obligatorio.</div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">
+                                Correo <span class="text-danger">*</span>
+                            </label>
+                            <input type="email" id="correo" name="correo" class="form-control"
+                                   maxlength="180" required/>
+                            <div class="invalid-feedback">Ingrese un correo válido.</div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">
+                                Edad <span class="text-danger">*</span>
+                            </label>
+                            <input type="number" id="edad" name="edad" class="form-control"
+                                   min="0" max="120" required/>
+                            <div class="invalid-feedback">Ingrese una edad entre 0 y 120.</div>
+                        </div>
+
+                        <div class="col-md-8">
+                            <label class="form-label fw-semibold">
+                                Curso (matrícula) <span class="text-danger">*</span>
+                            </label>
+                            <!-- IMPORTANTE: esto mapea a Estudiante.curso.idCurso -->
+                            <select id="cursoId" name="curso.idCurso" class="form-select" required>
+                                <option value="">Seleccione un curso...</option>
+                                <option th:each="c : ${cursosActivos}"
+                                        th:value="${c.idCurso}"
+                                        th:text="${c.nombre}">
+                                </option>
+                            </select>
+                            <div class="invalid-feedback">Debe seleccionar un curso.</div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fa-solid fa-xmark"></i> Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fa-solid fa-floppy-disk"></i> Guardar
+                    </button>
+                </div>
+
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Form oculto eliminar -->
+<form id="formEliminarEst" th:action="@{/estudiante/eliminar}" method="post" class="d-none">
+    <input type="hidden" id="idEstudianteEliminar" name="idEstudiante"/>
+</form>
+
+<footer th:replace="~{general/fragmentos :: footer}"></footer>
+
+<script>
+
+    function prepararNuevoEstudiante() {
+        document.getElementById('modalTituloEst').textContent = 'Nuevo Estudiante';
+        document.getElementById('idEstudiante').value = '';
+        document.getElementById('nombre').value = '';
+        document.getElementById('correo').value = '';
+        document.getElementById('edad').value = '';
+        document.getElementById('cursoId').value = '';
+        document.getElementById('formEstudiante').classList.remove('was-validated');
+    }
+
+    function prepararEditarEstudiante(btn) {
+        document.getElementById('modalTituloEst').textContent = 'Editar Estudiante';
+        document.getElementById('idEstudiante').value = btn.dataset.id || '';
+        document.getElementById('nombre').value = btn.dataset.nombre || '';
+        document.getElementById('correo').value = btn.dataset.correo || '';
+        document.getElementById('edad').value = btn.dataset.edad || '';
+        document.getElementById('cursoId').value = btn.dataset.cursoid || '';
+        document.getElementById('formEstudiante').classList.remove('was-validated');
+    }
+
+    function confirmarEliminarEstudiante(btn) {
+        const id = btn.dataset.id;
+        const nombre = btn.dataset.nombre;
+        Swal.fire({
+            title: '¿Eliminar estudiante?',
+            html:  `¿Está seguro que desea eliminar a <b>${nombre}</b>?<br>
+                    <small class="text-danger">Esta acción no se puede deshacer.</small>`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc3545',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: '<i class="fa-solid fa-trash"></i> Sí, eliminar',
+            cancelButtonText: '<i class="fa-solid fa-xmark"></i> Cancelar',
+            reverseButtons: true
+        }).then(result => {
+            if (result.isConfirmed) {
+                document.getElementById('idEstudianteEliminar').value = id;
+                document.getElementById('formEliminarEst').submit();
+            }
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const form = document.getElementById('formEstudiante');
+        form.addEventListener('submit', e => {
+            if (!form.checkValidity()) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            form.classList.add('was-validated');
+        });
+
+        setTimeout(() => {
+            document.querySelectorAll('.alert').forEach(el => {
+                bootstrap.Alert.getOrCreateInstance(el).close();
+            });
+        }, 4000);
+    });
+
+</script>
+
+</body>
+</html>
