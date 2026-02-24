@@ -49,7 +49,29 @@
                                 </a>
                             </li>
                         </ul>
+                        <span class="ms-auto text-white small fw-semibold">
+                            <i class="fa-solid fa-clock me-1"></i>
+                            <span id="reloj-header"></span>
+                        </span>
                     </div>
+                    <script>
+                        (function() {
+                            var dias = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+                            function actualizarReloj() {
+                                var ahora = new Date();
+                                var dia = dias[ahora.getDay()];
+                                var fecha = String(ahora.getDate()).padStart(2,'0') + '/'
+                                          + String(ahora.getMonth()+1).padStart(2,'0') + '/'
+                                          + ahora.getFullYear();
+                                var hora = String(ahora.getHours()).padStart(2,'0') + ':'
+                                         + String(ahora.getMinutes()).padStart(2,'0');
+                                var el = document.getElementById('reloj-header');
+                                if (el) el.textContent = dia + ' ' + fecha + ' ' + hora;
+                            }
+                            actualizarReloj();
+                            setInterval(actualizarReloj, 1000);
+                        })();
+                    </script>
                 </div>
             </nav>
         </header>
